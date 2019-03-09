@@ -29,11 +29,17 @@ func main() {
 	body, err := goquery.NewDocumentFromReader(resp.Body)
 	handleError(err, "Could not read response body.")
 
+	selectors := map[string]string{
+		"articleContainer": "#ListViewInner > li",
+		"price":            ".lvprice",
+		"finishTime":       ".timeleft .timeMs",
+	}
+
 	var articles []article
-	body.Find("#ListViewInner > li").Each(func(i int, s *goquery.Selection) {
+	body.Find(selectors["articleContainer"]).Each(func(i int, s *goquery.Selection) {
 		linkValue, _ := s.Find("a").Attr("href")
-		priceValue := s.Find(".lvprice").Text()
-		finishValue, _ := s.Find(".timeleft .timeMs").Attr("timems")
+		priceValue := s.Find(selectors["price"]).Text()
+		finishValue, _ := s.Find(selectors["finishTime"]).Attr("timems")
 		articles = append(articles, article{link: linkValue, price: priceValue, finish: finishValue})
 	})
 
