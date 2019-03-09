@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -21,8 +22,16 @@ type article struct {
 	finish string
 }
 
-func main() {
-	resp, err := http.Get("https://www.ebay.co.uk/sch/i.html?_from=R40&_sacat=0&LH_Auction=1&_nkw=spider-man+ps4&_sop=1")
+const searchTerm = "Spider-Man PS4"
+
+func getAuctions(searchTerm string) {
+	url := fmt.Sprintf("https://www.ebay.co.uk/sch/i.html?_from=R40&_sacat=0&LH_Auction=1&_nkw=%v&_sop=1", url.QueryEscape(searchTerm))
+	fmt.Println(url)
+	crawl(url)
+}
+
+func crawl(url string) {
+	resp, err := http.Get(url)
 	handleError(err, "Could not fetch response.")
 	defer resp.Body.Close()
 	fmt.Println("Status code: ", resp.StatusCode)
@@ -46,4 +55,8 @@ func main() {
 	fmt.Println("These are the 50 most recent auctions:")
 	articlesStringified, _ := fmt.Printf("%v", articles)
 	fmt.Println(articlesStringified)
+}
+
+func main() {
+	getAuctions(searchTerm)
 }
