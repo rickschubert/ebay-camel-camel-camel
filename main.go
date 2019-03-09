@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -18,8 +20,8 @@ func handleError(err error, preExitMsg string) {
 
 type article struct {
 	link   string
-	price  string
-	finish string
+	price  float64
+	finish int64
 }
 
 const searchTerm = "Spider-Man PS4"
@@ -47,9 +49,16 @@ func crawl(url string) []article {
 	var articles []article
 	body.Find(selectors["articleContainer"]).Each(func(i int, s *goquery.Selection) {
 		linkValue, _ := s.Find("a").Attr("href")
+
 		priceValue := s.Find(selectors["price"]).Text()
+		priceValueTrimmed := strings.TrimSpace(priceValue)
+		priceValuePlain := strings.Replace(priceValueTrimmed, "£", "", 1)
+		pricePlainNumber, _ := strconv.ParseFloat(priceValuePlain, 64)
+
 		finishValue, _ := s.Find(selectors["finishTime"]).Attr("timems")
-		articles = append(articles, article{link: linkValue, price: priceValue, finish: finishValue})
+		finishValueInt, _ := strconv.ParseInt(finishValue, 0, 64)
+
+		articles = append(articles, article{link: linkValue, price: pricePlainNumber, finish: finishValueInt})
 	})
 	return articles
 }
