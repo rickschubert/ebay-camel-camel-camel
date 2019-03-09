@@ -24,13 +24,13 @@ type article struct {
 
 const searchTerm = "Spider-Man PS4"
 
-func getAuctions(searchTerm string) {
+func getAuctions(searchTerm string) []article {
 	url := fmt.Sprintf("https://www.ebay.co.uk/sch/i.html?_from=R40&_sacat=0&LH_Auction=1&_nkw=%v&_sop=1", url.QueryEscape(searchTerm))
 	fmt.Println(url)
-	crawl(url)
+	return crawl(url)
 }
 
-func crawl(url string) {
+func crawl(url string) []article {
 	resp, err := http.Get(url)
 	handleError(err, "Could not fetch response.")
 	defer resp.Body.Close()
@@ -51,12 +51,12 @@ func crawl(url string) {
 		finishValue, _ := s.Find(selectors["finishTime"]).Attr("timems")
 		articles = append(articles, article{link: linkValue, price: priceValue, finish: finishValue})
 	})
-
-	fmt.Println("These are the 50 most recent auctions:")
-	articlesStringified, _ := fmt.Printf("%v", articles)
-	fmt.Println(articlesStringified)
+	return articles
 }
 
 func main() {
-	getAuctions(searchTerm)
+	articles := getAuctions(searchTerm)
+	fmt.Println("These are the 50 most recent auctions:")
+	articlesStringified, _ := fmt.Printf("%v", articles)
+	fmt.Println(articlesStringified)
 }
