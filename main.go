@@ -16,8 +16,9 @@ func handleError(err error, preExitMsg string) {
 }
 
 type article struct {
-	link  string
-	price string
+	link   string
+	price  string
+	finish string
 }
 
 func main() {
@@ -32,7 +33,8 @@ func main() {
 	body.Find("#ListViewInner > li").Each(func(i int, s *goquery.Selection) {
 		linkValue, _ := s.Find("a").Attr("href")
 		priceValue := s.Find(".lvprice").Text()
-		articles = append(articles, article{link: linkValue, price: priceValue})
+		finishValue, _ := s.Find(".timeleft .timeMs").Attr("timems")
+		articles = append(articles, article{link: linkValue, price: priceValue, finish: finishValue})
 	})
 
 	fmt.Println("These are the 50 most recent auctions:")
