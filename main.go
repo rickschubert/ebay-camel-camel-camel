@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -23,8 +24,6 @@ type article struct {
 	price  float64
 	finish int64
 }
-
-const searchTerm = "Spider-Man PS4"
 
 func getAuctions(searchTerm string) []article {
 	url := fmt.Sprintf("https://www.ebay.co.uk/sch/i.html?_from=R40&_sacat=0&LH_Auction=1&_nkw=%v&_sop=1", url.QueryEscape(searchTerm))
@@ -63,9 +62,21 @@ func crawl(url string) []article {
 	return articles
 }
 
+func getCurrentTime() int64 {
+	return time.Now().UnixNano() / int64(time.Millisecond)
+}
+
 func main() {
+	const searchTerm = "Spider-Man PS4"
+	const maxPrixe = 20
+	const maxTimeLeft = 300 * 60000 // X minutes in milliseconds
+
 	articles := getAuctions(searchTerm)
-	fmt.Println("These are the 50 most recent auctions:")
-	articlesStringified, _ := fmt.Printf("%v", articles)
-	fmt.Println(articlesStringified)
+
+	for _, article := range articles {
+		if article.price < maxPrixe && article.finish-getCurrentTime() < maxTimeLeft {
+			fmt.Println("-------------")
+			fmt.Println(article.link)
+		}
+	}
 }
