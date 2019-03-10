@@ -19,19 +19,19 @@ func handleError(err error, preExitMsg string) {
 	}
 }
 
-type article struct {
+type Article struct {
 	link   string
 	price  float64
 	finish int64
 }
 
-func getAuctions(searchTerm string) []article {
+func getAuctions(searchTerm string) []Article {
 	url := fmt.Sprintf("https://www.ebay.co.uk/sch/i.html?_from=R40&_sacat=0&LH_Auction=1&_nkw=%v&_sop=1", url.QueryEscape(searchTerm))
 	fmt.Println(url)
 	return crawl(url)
 }
 
-func crawl(url string) []article {
+func crawl(url string) []Article {
 	resp, err := http.Get(url)
 	handleError(err, "Could not fetch response.")
 	defer resp.Body.Close()
@@ -45,7 +45,7 @@ func crawl(url string) []article {
 		"finishTime":       ".timeleft .timeMs",
 	}
 
-	var articles []article
+	var articles []Article
 	body.Find(selectors["articleContainer"]).Each(func(i int, s *goquery.Selection) {
 		linkValue, _ := s.Find("a").Attr("href")
 
@@ -57,7 +57,7 @@ func crawl(url string) []article {
 		finishValue, _ := s.Find(selectors["finishTime"]).Attr("timems")
 		finishValueInt, _ := strconv.ParseInt(finishValue, 0, 64)
 
-		articles = append(articles, article{link: linkValue, price: pricePlainNumber, finish: finishValueInt})
+		articles = append(articles, Article{link: linkValue, price: pricePlainNumber, finish: finishValueInt})
 	})
 	return articles
 }
