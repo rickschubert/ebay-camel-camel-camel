@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
 func handleError(err error, preExitMsg string) {
@@ -72,17 +73,16 @@ func getCurrentTime() int64 {
 
 const awsDatabaseRegion = "eu-west-2"
 
-var dynamoClient *dynamodb.DynamoDB
-
-func connectToDynamoDB() {
+func connectToDynamoDB() *dynamodb.DynamoDB {
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(awsDatabaseRegion)},
 	)
 	if err != nil {
 		panic("Could not initiate new session with Dynamo DB.")
 	}
-	dynamoClient = dynamodb.New(sess)
+	dynamoClient := dynamodb.New(sess)
 	fmt.Println("Established dynamodb session")
+	return dynamoClient
 }
 
 func setEnvironmentVariablesForDevelopmentPurposes() {
@@ -130,15 +130,48 @@ func retrieveEnvParsedAsFloat(env string) float64 {
 	return floatified
 }
 
+type user struct {
+	UUID  string `json:"UUID"`
+	Email string `json:"email"`
+}
+
+func getUserEmailFromDatabase(dynamoClient *dynamodb.DynamoDB, userId string) string {
+	result, err := dynamoClient.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String("users"),
+		Key: map[string]*dynamodb.AttributeValue{
+			"UUID": {
+				S: aws.String("1"),
+			},
+		},
+	})
+	if err != nil {
+		panic(fmt.Sprintf("Could not retrieve the user with UUID %v", userId))
+	}
+
+	var userRetrieved user
+	err = dynamodbattribute.UnmarshalMap(result.Item, &userRetrieved)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to unmarshal record %v", err))
+	}
+
+	return userRetrieved.Email
+}
+
 func main() {
 	setEnvironmentVariablesForDevelopmentPurposes()
 
-	connectToDynamoDB()
 	searchTerm := retrieveEnv("SEARCH_TERM")
+	fmt.Println(searchTerm)
 	userId := retrieveEnv("USER_ID")
 	fmt.Println(userId)
 	maxPrice := retrieveEnvParsedAsFloat("PRICE")
+	fmt.Println(maxPrice)
 	maxTimeLeft := retrieveEnvParsedAsInt("MAX_TIME")
+	fmt.Println(maxTimeLeft)
+
+	dynamoClient := connectToDynamoDB()
+	userEmail := getUserEmailFromDatabase(dynamoClient, userId)
+	fmt.Println(userEmail)
 
 	articles := getAuctions(searchTerm)
 
