@@ -109,7 +109,7 @@ type trackingInformation struct {
 	SearchTerm string  `json:"searchTerm"`
 	UserId     string  `json:"userId"`
 	Price      float64 `json:"price"`
-	MaxTime    int64   `json:"maxTime"`
+	MaxTime    minutes `json:"maxTime"`
 }
 
 func getTrackingFromDatabase(trackingId string) trackingInformation {
@@ -138,16 +138,22 @@ var dynamoClient *dynamodb.DynamoDB
 
 const awsDatabaseRegion = "eu-west-2"
 
+type minutes int64
+
+func (m minutes) convertToMs() int64 {
+	return int64(m * 60000)
+}
+
 func main() {
 	connectToDynamoDB()
 	userEmail := getUserEmailFromDatabase("1")
 	fmt.Println(userEmail)
-	tracking := getTrackingFromDatabase("719a3797-5682-4e2c-9bba-9dc0ef225954")
+	tracking := getTrackingFromDatabase("895ba9b7-df51-4f58-a73d-0f6c57294ad6")
 
 	articles := getAuctions(tracking.SearchTerm)
 
 	for _, article := range articles {
-		if article.price < tracking.Price && article.finish-getCurrentTime() < (tracking.MaxTime*60*1000) {
+		if (article.price < tracking.Price) && ((article.finish - getCurrentTime()) < tracking.MaxTime.convertToMs()) {
 			fmt.Println("-------------")
 			fmt.Println(article.link)
 		}
