@@ -154,14 +154,14 @@ func main() {
 	connectToDynamoDB()
 	userEmail := getUserEmailFromDatabase("1")
 	fmt.Println(userEmail)
-	tracking := getTrackingFromDatabase("895ba9b7-df51-4f58-a73d-0f6c57294ad6")
+	tracking := getTrackingFromDatabase("749143c6-0c79-496b-9d71-d7063036c2e1")
 
 	articles := getAuctions(tracking.SearchTerm)
 
 	for _, article := range articles {
 		priceLowerThanDesiredMaximum := article.price < tracking.Price
-		timeInDesiredNotificationTimeFrame := ((article.finish - getCurrentTime()) < tracking.MaxTime.toMs())
-		if priceLowerThanDesiredMaximum && timeInDesiredNotificationTimeFrame {
+		AuctionEndsSoon := ((article.finish - getCurrentTime()) < tracking.MaxTime.toMs())
+		if priceLowerThanDesiredMaximum && AuctionEndsSoon {
 			fmt.Println("-------------")
 			fmt.Println(article.link)
 		}
