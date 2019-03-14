@@ -70,15 +70,10 @@ func getCurrentTime() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
 
-const awsDatabaseRegion = "eu-west-2"
-
 func connectToDynamoDB() {
-	sess, err := session.NewSession(&aws.Config{
+	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(awsDatabaseRegion)},
-	)
-	if err != nil {
-		panic("Could not initiate new session with Dynamo DB.")
-	}
+	))
 	dynamoClient = dynamodb.New(sess)
 	fmt.Println("Established dynamodb session")
 }
@@ -113,8 +108,8 @@ func getUserEmailFromDatabase(userId string) string {
 type trackingInformation struct {
 	SearchTerm string  `json:"searchTerm"`
 	UserId     string  `json:"userId"`
-	price      float64 `json:"price"`
-	maxTime    int     `json:"maxTime"`
+	Price      float64 `json:"price"`
+	MaxTime    int64   `json:"maxTime"`
 }
 
 func getTrackingFromDatabase(trackingId string) trackingInformation {
@@ -141,32 +136,21 @@ func getTrackingFromDatabase(trackingId string) trackingInformation {
 
 var dynamoClient *dynamodb.DynamoDB
 
+const awsDatabaseRegion = "eu-west-2"
+
 func main() {
-
-	// 06c6ef45-728b-4b8b-97a1-8c47043d8727
-
-	// searchTerm := retrieveEnv("SEARCH_TERM")
-	// fmt.Println(searchTerm)
-	// userId := retrieveEnv("USER_ID")
-	// fmt.Println(userId)
-	// maxPrice := retrieveEnvParsedAsFloat("PRICE")
-	// fmt.Println(maxPrice)
-	// maxTimeLeft := retrieveEnvParsedAsInt("MAX_TIME")
-	// fmt.Println(maxTimeLeft)
-
 	connectToDynamoDB()
 	userEmail := getUserEmailFromDatabase("1")
 	fmt.Println(userEmail)
-	trackingInfoWeWantToUser := getTrackingFromDatabase("06c6ef45-728b-4b8b-97a1-8c47043d8727")
-	fmt.Println(trackingInfoWeWantToUser)
+	tracking := getTrackingFromDatabase("719a3797-5682-4e2c-9bba-9dc0ef225954")
 
-	// articles := getAuctions(searchTerm)
+	articles := getAuctions(tracking.SearchTerm)
 
-	// for _, article := range articles {
-	// 	if article.price < maxPrice && article.finish-getCurrentTime() < maxTimeLeft {
-	// 		fmt.Println("-------------")
-	// 		fmt.Println(article.link)
-	// 	}
-	// }
+	for _, article := range articles {
+		if article.price < tracking.Price && article.finish-getCurrentTime() < (tracking.MaxTime*60*1000) {
+			fmt.Println("-------------")
+			fmt.Println(article.link)
+		}
+	}
 
 }
