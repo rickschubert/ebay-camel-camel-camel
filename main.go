@@ -159,7 +159,9 @@ func main() {
 	articles := getAuctions(tracking.SearchTerm)
 
 	for _, article := range articles {
-		if (article.price < tracking.Price) && ((article.finish - getCurrentTime()) < tracking.MaxTime.toMs()) {
+		priceLowerThanDesiredMaximum := article.price < tracking.Price
+		timeInDesiredNotificationTimeFrame := (article.finish - getCurrentTime()) < tracking.MaxTime.toMs()
+		if priceLowerThanDesiredMaximum && timeInDesiredNotificationTimeFrame {
 			fmt.Println("-------------")
 			fmt.Println(article.link)
 		}
