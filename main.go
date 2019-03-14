@@ -160,7 +160,7 @@ func main() {
 
 	for _, article := range articles {
 		priceLowerThanDesiredMaximum := article.price < tracking.Price
-		timeInDesiredNotificationTimeFrame := (article.finish - getCurrentTime()) < tracking.MaxTime.toMs()
+		timeInDesiredNotificationTimeFrame := ((article.finish - getCurrentTime()) < tracking.MaxTime.toMs())
 		if priceLowerThanDesiredMaximum && timeInDesiredNotificationTimeFrame {
 			fmt.Println("-------------")
 			fmt.Println(article.link)
