@@ -9,6 +9,10 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
 func handleError(err error, preExitMsg string) {
@@ -22,7 +26,7 @@ func handleError(err error, preExitMsg string) {
 type Article struct {
 	link   string
 	price  float64
-	finish int64
+	finish milliSeconds
 }
 
 func getAuctions(searchTerm string) []Article {
@@ -57,26 +61,110 @@ func crawl(url string) []Article {
 		finishValue, _ := s.Find(selectors["finishTime"]).Attr("timems")
 		finishValueInt, _ := strconv.ParseInt(finishValue, 0, 64)
 
-		articles = append(articles, Article{link: linkValue, price: pricePlainNumber, finish: finishValueInt})
+		articles = append(articles, Article{
+			link:   linkValue,
+			price:  pricePlainNumber,
+			finish: milliSeconds(finishValueInt),
+		})
 	})
 	return articles
 }
 
-func getCurrentTime() int64 {
-	return time.Now().UnixNano() / int64(time.Millisecond)
+func getCurrentTime() milliSeconds {
+	return milliSeconds(time.Now().UnixNano() / int64(time.Millisecond))
+}
+
+func connectToDynamoDB() {
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String(awsDatabaseRegion)},
+	))
+	dynamoClient = dynamodb.New(sess)
+	fmt.Println("Established dynamodb session")
+}
+
+type user struct {
+	UUID  string `json:"UUID"`
+	Email string `json:"email"`
+}
+
+func getUserEmailFromDatabase(userId string) string {
+	result, err := dynamoClient.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String("users"),
+		Key: map[string]*dynamodb.AttributeValue{
+			"UUID": {
+				S: aws.String(userId),
+			},
+		},
+	})
+	if err != nil {
+		panic(fmt.Sprintf("Could not retrieve the user with UUID %v", userId))
+	}
+
+	var userRetrieved user
+	errMarsh := dynamodbattribute.UnmarshalMap(result.Item, &userRetrieved)
+	if errMarsh != nil {
+		panic(fmt.Sprintf("Failed to unmarshal record %v", err))
+	}
+
+	return userRetrieved.Email
+}
+
+type trackingInformation struct {
+	SearchTerm string  `json:"searchTerm"`
+	UserId     string  `json:"userId"`
+	Price      float64 `json:"price"`
+	MaxTime    minutes `json:"maxTime"`
+}
+
+func getTrackingFromDatabase(trackingId string) trackingInformation {
+	result, err := dynamoClient.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String("trackings"),
+		Key: map[string]*dynamodb.AttributeValue{
+			"UUID": {
+				S: aws.String(trackingId),
+			},
+		},
+	})
+	if err != nil {
+		panic(fmt.Sprintf("Could not retrieve the tracking with UUID %v", trackingId))
+	}
+
+	var trackingRetrieved trackingInformation
+	err = dynamodbattribute.UnmarshalMap(result.Item, &trackingRetrieved)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to unmarshal record %v", err))
+	}
+
+	return trackingRetrieved
+}
+
+var dynamoClient *dynamodb.DynamoDB
+
+const awsDatabaseRegion = "eu-west-2"
+
+type minutes int64
+
+type milliSeconds int64
+
+func (m minutes) toMs() milliSeconds {
+	return milliSeconds(m * 60000)
 }
 
 func main() {
-	const searchTerm = "Spider-Man PS4"
-	const maxPrixe = 20
-	const maxTimeLeft = 300 * 60000 // X minutes in milliseconds
+	connectToDynamoDB()
+	userEmail := getUserEmailFromDatabase("1")
+	fmt.Println(userEmail)
+	tracking := getTrackingFromDatabase("749143c6-0c79-496b-9d71-d7063036c2e1")
 
-	articles := getAuctions(searchTerm)
+	articles := getAuctions(tracking.SearchTerm)
 
 	for _, article := range articles {
-		if article.price < maxPrixe && article.finish-getCurrentTime() < maxTimeLeft {
+		priceLowerThanDesiredMaximum := article.price < tracking.Price
+		AuctionEndsSoon := ((article.finish - getCurrentTime()) < tracking.MaxTime.toMs())
+		if priceLowerThanDesiredMaximum && AuctionEndsSoon {
 			fmt.Println("-------------")
 			fmt.Println(article.link)
 		}
 	}
+
 }
