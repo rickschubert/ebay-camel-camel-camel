@@ -26,7 +26,7 @@ func handleError(err error, preExitMsg string) {
 type Article struct {
 	link   string
 	price  float64
-	finish int64
+	finish milliSeconds
 }
 
 func getAuctions(searchTerm string) []Article {
@@ -61,13 +61,17 @@ func crawl(url string) []Article {
 		finishValue, _ := s.Find(selectors["finishTime"]).Attr("timems")
 		finishValueInt, _ := strconv.ParseInt(finishValue, 0, 64)
 
-		articles = append(articles, Article{link: linkValue, price: pricePlainNumber, finish: finishValueInt})
+		articles = append(articles, Article{
+			link:   linkValue,
+			price:  pricePlainNumber,
+			finish: milliSeconds(finishValueInt),
+		})
 	})
 	return articles
 }
 
-func getCurrentTime() int64 {
-	return time.Now().UnixNano() / int64(time.Millisecond)
+func getCurrentTime() milliSeconds {
+	return milliSeconds(time.Now().UnixNano() / int64(time.Millisecond))
 }
 
 func connectToDynamoDB() {
@@ -140,8 +144,10 @@ const awsDatabaseRegion = "eu-west-2"
 
 type minutes int64
 
-func (m minutes) convertToMs() int64 {
-	return int64(m * 60000)
+type milliSeconds int64
+
+func (m minutes) toMs() milliSeconds {
+	return milliSeconds(m * 60000)
 }
 
 func main() {
@@ -153,7 +159,7 @@ func main() {
 	articles := getAuctions(tracking.SearchTerm)
 
 	for _, article := range articles {
-		if (article.price < tracking.Price) && ((article.finish - getCurrentTime()) < tracking.MaxTime.convertToMs()) {
+		if (article.price < tracking.Price) && ((article.finish - getCurrentTime()) < tracking.MaxTime.toMs()) {
 			fmt.Println("-------------")
 			fmt.Println(article.link)
 		}
