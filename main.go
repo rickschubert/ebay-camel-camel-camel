@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -73,61 +72,15 @@ func getCurrentTime() int64 {
 
 const awsDatabaseRegion = "eu-west-2"
 
-func connectToDynamoDB() *dynamodb.DynamoDB {
+func connectToDynamoDB() {
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(awsDatabaseRegion)},
 	)
 	if err != nil {
 		panic("Could not initiate new session with Dynamo DB.")
 	}
-	dynamoClient := dynamodb.New(sess)
+	dynamoClient = dynamodb.New(sess)
 	fmt.Println("Established dynamodb session")
-	return dynamoClient
-}
-
-func setEnvironmentVariablesForDevelopmentPurposes() {
-	os.Setenv("SEARCH_TERM", "Spider-Man PS4")
-	os.Setenv("PRICE", "20")
-	os.Setenv("MAX_TIME", "18000000")
-	os.Setenv("USER_ID", "1")
-}
-
-func exitProgramOnUndefinedEnv(env string) {
-	_, err := fmt.Printf("The environment variable %v needs to be defined.\n", env)
-	if err != nil {
-		fmt.Println("Had trouble formatting the error message.")
-	}
-	os.Exit(1)
-}
-
-func retrieveEnv(env string) string {
-	envRetr, envex := os.LookupEnv(env)
-	if !envex {
-		exitProgramOnUndefinedEnv(env)
-	}
-	return envRetr
-}
-
-func _handleNumberParsingError(err error, env string, expectedType string) {
-	msg := fmt.Sprintf("ERROR: Could not parse environment variable %v into %v\n", env, expectedType)
-	if err != nil {
-		fmt.Println(msg)
-		os.Exit(1)
-	}
-}
-
-func retrieveEnvParsedAsInt(env string) int64 {
-	envRetr := retrieveEnv(env)
-	intified, err := strconv.ParseInt(envRetr, 10, 64)
-	_handleNumberParsingError(err, env, "int")
-	return intified
-}
-
-func retrieveEnvParsedAsFloat(env string) float64 {
-	envRetr := retrieveEnv(env)
-	floatified, err := strconv.ParseFloat(envRetr, 64)
-	_handleNumberParsingError(err, env, "float")
-	return floatified
 }
 
 type user struct {
@@ -135,12 +88,12 @@ type user struct {
 	Email string `json:"email"`
 }
 
-func getUserEmailFromDatabase(dynamoClient *dynamodb.DynamoDB, userId string) string {
+func getUserEmailFromDatabase(userId string) string {
 	result, err := dynamoClient.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String("users"),
 		Key: map[string]*dynamodb.AttributeValue{
 			"UUID": {
-				S: aws.String("1"),
+				S: aws.String(userId),
 			},
 		},
 	})
@@ -149,37 +102,71 @@ func getUserEmailFromDatabase(dynamoClient *dynamodb.DynamoDB, userId string) st
 	}
 
 	var userRetrieved user
-	err = dynamodbattribute.UnmarshalMap(result.Item, &userRetrieved)
-	if err != nil {
+	errMarsh := dynamodbattribute.UnmarshalMap(result.Item, &userRetrieved)
+	if errMarsh != nil {
 		panic(fmt.Sprintf("Failed to unmarshal record %v", err))
 	}
 
 	return userRetrieved.Email
 }
 
-func main() {
-	setEnvironmentVariablesForDevelopmentPurposes()
+type trackingInformation struct {
+	SearchTerm string  `json:"searchTerm"`
+	UserId     string  `json:"userId"`
+	price      float64 `json:"price"`
+	maxTime    int     `json:"maxTime"`
+}
 
-	searchTerm := retrieveEnv("SEARCH_TERM")
-	fmt.Println(searchTerm)
-	userId := retrieveEnv("USER_ID")
-	fmt.Println(userId)
-	maxPrice := retrieveEnvParsedAsFloat("PRICE")
-	fmt.Println(maxPrice)
-	maxTimeLeft := retrieveEnvParsedAsInt("MAX_TIME")
-	fmt.Println(maxTimeLeft)
-
-	dynamoClient := connectToDynamoDB()
-	userEmail := getUserEmailFromDatabase(dynamoClient, userId)
-	fmt.Println(userEmail)
-
-	articles := getAuctions(searchTerm)
-
-	for _, article := range articles {
-		if article.price < maxPrice && article.finish-getCurrentTime() < maxTimeLeft {
-			fmt.Println("-------------")
-			fmt.Println(article.link)
-		}
+func getTrackingFromDatabase(trackingId string) trackingInformation {
+	result, err := dynamoClient.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String("trackings"),
+		Key: map[string]*dynamodb.AttributeValue{
+			"UUID": {
+				S: aws.String(trackingId),
+			},
+		},
+	})
+	if err != nil {
+		panic(fmt.Sprintf("Could not retrieve the tracking with UUID %v", trackingId))
 	}
+
+	var trackingRetrieved trackingInformation
+	err = dynamodbattribute.UnmarshalMap(result.Item, &trackingRetrieved)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to unmarshal record %v", err))
+	}
+
+	return trackingRetrieved
+}
+
+var dynamoClient *dynamodb.DynamoDB
+
+func main() {
+
+	// 06c6ef45-728b-4b8b-97a1-8c47043d8727
+
+	// searchTerm := retrieveEnv("SEARCH_TERM")
+	// fmt.Println(searchTerm)
+	// userId := retrieveEnv("USER_ID")
+	// fmt.Println(userId)
+	// maxPrice := retrieveEnvParsedAsFloat("PRICE")
+	// fmt.Println(maxPrice)
+	// maxTimeLeft := retrieveEnvParsedAsInt("MAX_TIME")
+	// fmt.Println(maxTimeLeft)
+
+	connectToDynamoDB()
+	userEmail := getUserEmailFromDatabase("1")
+	fmt.Println(userEmail)
+	trackingInfoWeWantToUser := getTrackingFromDatabase("06c6ef45-728b-4b8b-97a1-8c47043d8727")
+	fmt.Println(trackingInfoWeWantToUser)
+
+	// articles := getAuctions(searchTerm)
+
+	// for _, article := range articles {
+	// 	if article.price < maxPrice && article.finish-getCurrentTime() < maxTimeLeft {
+	// 		fmt.Println("-------------")
+	// 		fmt.Println(article.link)
+	// 	}
+	// }
 
 }
