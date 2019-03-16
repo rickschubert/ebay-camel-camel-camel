@@ -9,10 +9,11 @@ import (
 )
 
 func main() {
-	database.Connect()
-	userEmail := database.GetUserEmail("1")
+	db := database.New()
+	// db.Connect()
+	userEmail := db.GetUserEmail("1")
 	fmt.Println(userEmail)
-	tracking := database.GetTracking("749143c6-0c79-496b-9d71-d7063036c2e1")
+	tracking := db.GetTracking("749143c6-0c79-496b-9d71-d7063036c2e1")
 
 	articles := crawler.GetAuctions(tracking.SearchTerm)
 
@@ -24,5 +25,4 @@ func main() {
 			fmt.Println(article.Link)
 		}
 	}
-
 }

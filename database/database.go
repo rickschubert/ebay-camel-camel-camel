@@ -10,6 +10,8 @@ import (
 	"github.com/rickschubert/ebay-camel-camel-camel/time"
 )
 
+type Database struct{}
+
 type trackingInformation struct {
 	SearchTerm string       `json:"searchTerm"`
 	UserId     string       `json:"userId"`
@@ -26,15 +28,16 @@ var dynamoClient *dynamodb.DynamoDB
 
 const awsDatabaseRegion = "eu-west-2"
 
-func Connect() {
+func New() Database {
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String(awsDatabaseRegion)},
 	))
 	dynamoClient = dynamodb.New(sess)
 	fmt.Println("Established dynamodb session")
+	return Database{}
 }
 
-func GetTracking(trackingId string) trackingInformation {
+func (Database) GetTracking(trackingId string) trackingInformation {
 	result, err := dynamoClient.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String("trackings"),
 		Key: map[string]*dynamodb.AttributeValue{
@@ -56,7 +59,7 @@ func GetTracking(trackingId string) trackingInformation {
 	return trackingRetrieved
 }
 
-func GetUserEmail(userId string) string {
+func (Database) GetUserEmail(userId string) string {
 	result, err := dynamoClient.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String("users"),
 		Key: map[string]*dynamodb.AttributeValue{
