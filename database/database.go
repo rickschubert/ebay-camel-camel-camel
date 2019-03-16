@@ -89,7 +89,7 @@ func (Database) GetUserEmail(userId string) string {
 	return userRetrieved.Email
 }
 
-func (Database) CreateTracking(article ItemToTrack) *dynamodb.PutItemOutput {
+func (Database) CreateTracking(article ItemToTrack) (*dynamodb.PutItemOutput, error) {
 	av, err := dynamodbattribute.MarshalMap(article)
 	if err != nil {
 		panic(fmt.Sprintf("There was a problem with unmarshaling the input article %v", article))
@@ -99,13 +99,10 @@ func (Database) CreateTracking(article ItemToTrack) *dynamodb.PutItemOutput {
 		TableName: aws.String("trackings"),
 	}
 	itemOutput, errWriting := dynamoClient.PutItem(input)
-	if errWriting != nil {
-		panic(fmt.Sprintf("An error occured when trying to post the item to DynamoDB: %v", err.Error()))
-	}
-	return itemOutput
+	return itemOutput, errWriting
 }
 
-func (Database) DeleteTracking(trackingId string) *dynamodb.DeleteItemOutput {
+func (Database) DeleteTracking(trackingId string) (*dynamodb.DeleteItemOutput, error) {
 	input := &dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
 			"UUID": {
@@ -115,8 +112,5 @@ func (Database) DeleteTracking(trackingId string) *dynamodb.DeleteItemOutput {
 		TableName: aws.String("trackings"),
 	}
 	deleteItemOutput, err := dynamoClient.DeleteItem(input)
-	if err != nil {
-		panic(fmt.Sprintf("An error occured when trying to delete the item from DynamoDB: %v", err.Error()))
-	}
-	return deleteItemOutput
+	return deleteItemOutput, err
 }
